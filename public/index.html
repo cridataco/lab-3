@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Estado del Nodo</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .leader { color: green; font-weight: bold; }
+        .log, .health-check { margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>Estado del Nodo</h1>
+    <p><strong>ID del Nodo:</strong> <span id="node-id"></span></p>
+    <p><strong>Líder Actual:</strong> <span id="lider-id"></span></p>
+    <p id="is-leader" class="leader"></p>
+
+    <h2>Health Checks al Líder</h2>
+    <div id="health-checks"></div>
+
+    <h2>Logs</h2>
+    <div id="logs"></div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        const nodeIdEl = document.getElementById('node-id');
+        const liderIdEl = document.getElementById('lider-id');
+        const isLeaderEl = document.getElementById('is-leader');
+        const healthChecksEl = document.getElementById('health-checks');
+        const logsEl = document.getElementById('logs');
+
+        socket.on('connect', async () => {
+            const response = await fetch('/estado');
+            const { esLider, liderId } = await response.json();
+
+            nodeIdEl.textContent = `Nodo ${socket.id}`;
+            liderIdEl.textContent = liderId ? `Nodo ${liderId}` : 'Sin líder';
+
+            if (esLider) {
+                isLeaderEl.textContent = 'Este nodo es el líder.';
+            } else {
+                isLeaderEl.textContent = 'Este nodo no es el líder.';
+            }
+        });
+
+        socket.on('healthCheck', ({ liderId, status }) => {
+            const check = document.createElement('p');
+            check.classList.add('health-check');
+            check.textContent = `Health check al líder ${liderId}: ${status}`;
+            healthChecksEl.appendChild(check);
+        });
+
+        socket.on('log', (message) => {
+            const log = document.createElement('p');
+            log.classList.add('log');
+            log.textContent = message;
+            logsEl.appendChild(log);
+        });
+
+        socket.on('nuevoLider', (nuevoLider) => {
+            liderIdEl.textContent = `Nodo ${nuevoLider}`;
+        });
+    </script>
+</body>
+</html>

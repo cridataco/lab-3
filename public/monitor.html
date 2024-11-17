@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitor de Servidores</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+    #server-list, #log-list {
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      max-width: 600px;
+    }
+    h2 {
+      color: #333;
+    }
+    .log-entry {
+      font-size: 0.9em;
+      color: #555;
+      margin: 4px 0;
+    }
+    .server-entry {
+      font-size: 1em;
+      margin: 2px 0;
+    }
+    .leader {
+      font-weight: bold;
+      color: green;
+    }
+  </style>
+</head>
+<body>
+  <h1>Monitor de Servidores</h1>
+
+  <div id="server-list">
+    <h2>Lista de Servidores</h2>
+    <ul id="servers"></ul>
+  </div>
+
+  <div id="log-list">
+    <h2>Logs</h2>
+    <ul id="logs"></ul>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    socket.on('updateServers', (servers) => {
+      const serversList = document.getElementById('servers');
+      serversList.innerHTML = '';
+      servers.forEach(server => {
+        const li = document.createElement('li');
+        li.classList.add('server-entry');
+        li.textContent = `ID: ${server.id} - Estado: ${server.estado} ${server.esLider ? '(Líder)' : ''}`;
+        if (server.esLider) li.classList.add('leader');
+        serversList.appendChild(li);
+      });
+    });
+
+    socket.on('newLog', (log) => {
+      const logsList = document.getElementById('logs');
+      const li = document.createElement('li');
+      li.classList.add('log-entry');
+      li.textContent = log;
+      logsList.appendChild(li);
+
+      if (logsList.childElementCount > 50) {
+        logsList.removeChild(logsList.firstChild);
+      }
+    });
+  </script>
+</body>
+</html>
