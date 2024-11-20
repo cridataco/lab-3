@@ -11,15 +11,15 @@ const PORT = 3000;
 
 app.use(express.json());
 
-let nodos = []; 
-let liderId = null; 
-let logs = []; 
+let nodos = [];
+let liderId = null;
+let logs = [];
 
 function logMessage(message) {
     const timestampedMessage = `${new Date().toISOString()} - ${message}`;
     console.log(timestampedMessage);
     logs.push(timestampedMessage);
-    io.emit('newLog', timestampedMessage); // Emitir log a la interfaz
+    io.emit('newLog', timestampedMessage);
 }
 
 app.get('/logs', (req, res) => {
@@ -36,14 +36,13 @@ app.post('/agregarNodo', (req, res) => {
     nodos.push(nuevoNodo);
     logMessage(`Nodo ${id} agregado al sistema.`);
 
-    // Verificación si es el único nodo en la red
     if (nodos.length === 1) {
         nuevoNodo.esLider = true;
         liderId = id;
         logMessage(`Nodo ${id} es el único en la red y se ha convertido en el líder.`);
     }
 
-    io.emit('updateNodos', nodos); // Emitir actualización de nodos a la interfaz
+    io.emit('updateNodos', nodos); // Emitir actualización de nodos
     res.status(201).send(`Nodo ${id} agregado exitosamente.`);
 });
 
@@ -67,11 +66,10 @@ app.post('/detenerNodo', (req, res) => {
         logMessage(`El nodo ${id} era el líder y ha sido detenido. Se requiere una nueva elección.`);
     }
 
-    io.emit('updateNodos', nodos); 
+    io.emit('updateNodos', nodos);
     res.send(`Nodo ${id} detenido.`);
 });
 
-// Obtener el líder actual
 app.get('/lider', (req, res) => {
     if (liderId) {
         res.json({ liderId });
@@ -80,16 +78,8 @@ app.get('/lider', (req, res) => {
     }
 });
 
-// para el HTML de la interfaz
-app.use(express.static(path.join(__dirname)));
-
-// Ruta principal que sirve el panel de trazabilidad
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public/monitor.html'));
-});
-
+// Emitir nodos y logs al conectar
 io.on('connection', (socket) => {
-    // Enviar lista de nodos y logs al cliente
     socket.emit('updateNodos', nodos);
     logs.forEach(log => socket.emit('newLog', log));
 });
@@ -100,4 +90,9 @@ server.listen(PORT, () => {
 
 app.get('/nodos', (req, res) => {
     res.json(nodos);
+});
+
+app.use(express.static(path.join(__dirname)));
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/monitor.html'));
 });
