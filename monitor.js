@@ -15,17 +15,19 @@ let nodos = [];
 let liderId = null;
 let logs = [];
 
+// Función para registrar logs con timestamp
 function logMessage(message) {
     const timestampedMessage = `${new Date().toISOString()} - ${message}`;
     console.log(timestampedMessage);
     logs.push(timestampedMessage);
-    io.emit('newLog', timestampedMessage);
+    io.emit('newLog', timestampedMessage); // Enviar log a los clientes conectados
 }
 
 app.get('/logs', (req, res) => {
     res.json({ logs });
 });
 
+// Agregar un nuevo nodo
 app.post('/agregarNodo', (req, res) => {
     const { id } = req.body;
     if (nodos.find(nodo => nodo.id === id)) {
@@ -42,34 +44,26 @@ app.post('/agregarNodo', (req, res) => {
         logMessage(`Nodo ${id} es el único en la red y se ha convertido en el líder.`);
     }
 
-    io.emit('updateNodos', nodos); // Emitir actualización de nodos
+    io.emit('updateNodos', nodos);
     res.status(201).send(`Nodo ${id} agregado exitosamente.`);
 });
 
-app.post('/detenerNodo', (req, res) => {
+// Notificar un nuevo líder
+app.post('/nuevoLider', (req, res) => {
     const { id } = req.body;
     const nodo = nodos.find(n => n.id === id);
     if (!nodo) {
-        logMessage(`Intento de detener un nodo inexistente con ID ${id}.`);
+        logMessage(`Intento de declarar líder un nodo inexistente con ID ${id}.`);
         return res.status(404).send('Nodo no encontrado.');
     }
-    if (nodo.estado === 'detenido') {
-        logMessage(`Nodo ${id} ya estaba detenido.`);
-        return res.status(400).send('El nodo ya está detenido.');
-    }
-    nodo.estado = 'detenido';
-    logMessage(`Nodo ${id} detenido.`);
-
-    if (nodo.esLider) {
-        nodo.esLider = false;
-        liderId = null;
-        logMessage(`El nodo ${id} era el líder y ha sido detenido. Se requiere una nueva elección.`);
-    }
-
+    liderId = id;
+    nodos.forEach(n => (n.esLider = n.id === liderId));
+    logMessage(`Nodo ${id} se ha declarado como el nuevo líder.`);
     io.emit('updateNodos', nodos);
-    res.send(`Nodo ${id} detenido.`);
+    res.send(`Líder actualizado al nodo ${id}.`);
 });
 
+// Obtener líder actual
 app.get('/lider', (req, res) => {
     if (liderId) {
         res.json({ liderId });
@@ -78,7 +72,20 @@ app.get('/lider', (req, res) => {
     }
 });
 
-// Emitir nodos y logs al conectar
+// Obtener nodos
+app.get('/nodos', (req, res) => {
+    res.json(nodos);
+});
+
+// Endpoint de health check para el líder
+app.get('/healthCheckLider', (req, res) => {
+    if (liderId) {
+        res.send(`Líder ${liderId} está activo.`);
+    } else {
+        res.status(404).send('No hay líder actual.');
+    }
+});
+
 io.on('connection', (socket) => {
     socket.emit('updateNodos', nodos);
     logs.forEach(log => socket.emit('newLog', log));
@@ -86,10 +93,6 @@ io.on('connection', (socket) => {
 
 server.listen(PORT, () => {
     logMessage(`Servidor de monitoreo escuchando en el puerto ${PORT}`);
-});
-
-app.get('/nodos', (req, res) => {
-    res.json(nodos);
 });
 
 app.use(express.static(path.join(__dirname)));
