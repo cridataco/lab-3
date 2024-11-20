@@ -48,6 +48,49 @@ app.post('/agregarNodo', (req, res) => {
     res.status(201).send(`Nodo ${id} agregado exitosamente.`);
 });
 
+app.post('/detenerNodo', (req, res) => {
+    const { id } = req.body;
+    const nodo = nodos.find(n => n.id === id);
+    if (!nodo) {
+        logMessage(`Intento de detener un nodo inexistente con ID ${id}.`);
+        return res.status(404).send('Nodo no encontrado.');
+    }
+    if (nodo.estado === 'detenido') {
+        logMessage(`Nodo ${id} ya estaba detenido.`);
+        return res.status(400).send('El nodo ya está detenido.');
+    }
+    nodo.estado = 'detenido';
+    logMessage(`Nodo ${id} detenido.`);
+
+    if (nodo.esLider) {
+        nodo.esLider = false;
+        liderId = null;
+        logMessage(`El nodo ${id} era el líder y ha sido detenido. Se requiere una nueva elección.`);
+        io.emit('liderCaido'); // Notificar a los nodos
+    }
+
+    io.emit('updateNodos', nodos);
+    res.send(`Nodo ${id} detenido.`);
+});
+
+app.post('/marcarNodoCaido', (req, res) => {
+    const { id } = req.body;
+    const nodo = nodos.find(n => n.id === id);
+    if (!nodo || nodo.estado === 'detenido') return res.status(404).send('Nodo no encontrado o ya detenido.');
+
+    nodo.estado = 'caido';
+    logMessage(`Nodo ${id} marcado como caído.`);
+    if (nodo.esLider) {
+        liderId = null;
+        logMessage(`El líder ${id} ha caído. Se requiere una nueva elección.`);
+        io.emit('liderCaido'); // Notificar a los nodos
+    }
+
+    io.emit('updateNodos', nodos);
+    res.status(200).send(`Nodo ${id} marcado como caído.`);
+});
+
+
 // Notificar un nuevo líder
 app.post('/nuevoLider', (req, res) => {
     const { id } = req.body;

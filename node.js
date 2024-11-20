@@ -35,17 +35,27 @@ function logMessage(message) {
 }
 
 async function realizarHealthCheck() {
-    if (liderId && liderId !== NODE_ID) {
-        try {
-            await axios.get(`${MONITOR_URL}/healthCheckLider`);
-            logMessage(`Health check al líder con ID ${liderId} exitoso.`);
-        } catch (error) {
-            logMessage(`Health check fallido al líder con ID ${liderId}. Iniciando elección.`);
-            iniciarEleccion();
+    const intervalo = Math.floor(Math.random() * 5000) + 5000; // Entre 5 y 10 segundos
+    setTimeout(async () => {
+        if (liderId) {
+            try {
+                const response = await axios.get(`${MONITOR_URL}/lider`);
+                if (response.data.liderId === liderId) {
+                    await axios.get(`http://localhost:${4000 + liderId}/healthCheck`);
+                    logMessage(`Health check al líder con ID ${liderId} exitoso.`);
+                } else {
+                    throw new Error('El líder reportado no coincide.');
+                }
+            } catch (error) {
+                logMessage(`Health check fallido al líder con ID ${liderId}. Iniciando elección.`);
+                await axios.post(`${MONITOR_URL}/marcarNodoCaido`, { id: liderId }); // Marcar como caído en el monitor
+                iniciarEleccion();
+            }
         }
-    }
-    setTimeout(realizarHealthCheck, Math.random() * 5000 + 5000);
+        realizarHealthCheck(); // Reiniciar el health check
+    }, intervalo);
 }
+
 
 async function iniciarEleccion() {
     if (enProcesoDeEleccion) return;
