@@ -5,11 +5,13 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
+const cors = require('cors');
 const io = socketIo(server);
 
 const PORT = 3000;
 
 app.use(express.json());
+app.use(cors());
 
 let nodos = [];
 let liderId = null;

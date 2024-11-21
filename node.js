@@ -7,8 +7,16 @@ const { log } = require('console');
 
 const app = express();
 const server = http.createServer(app);
+const io = require('socket.io')(server);
+const cors = require('cors');
 
-const NODE_ID = parseInt(process.env.NODE_ID) || 1;
+app.use(cors({
+    origin: '*', 
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type']
+  }));
+
+const NODE_ID = parseInt(process.env.NODE_ID) || 2;
 const MONITOR_URL = 'http://localhost:3000';
 const PORT = 4000 + NODE_ID;
 
@@ -29,12 +37,11 @@ socket.on('updateNodos', (nodos) => {
     logMessage(`Líder actual reportado por el monitor: Nodo ${liderId}.`);
 });
 
-// Función para registrar logs
 function logMessage(message) {
     const timestampedMessage = `${new Date().toISOString()} - ${message}`;
     console.log(timestampedMessage);
     logs.push(timestampedMessage);
-    socket.emit('log', timestampedMessage);
+    io.emit('otherLog', timestampedMessage); 
 }
 
 async function realizarHealthCheck() {
@@ -109,7 +116,12 @@ app.get('/health', (req, res) => {
     res.status(200).send('OK');
 });
 
-app.use(express.static(path.join(__dirname)));
+io.on('connection', (socket) => { 
+    logs.forEach(log => socket.emit('otherLog', log));
+});
+
+
+app.use(express.static(path.join(__dirname, 'public')));
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public/index.html'));
 });

@@ -3,111 +3,93 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Monitor de Nodo</title>
+  <title>Información del Nodo</title>
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 20px;
-    }
-    h1, h2 {
-      color: #333;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
     }
     .container {
       max-width: 800px;
-      margin: auto;
+      margin: 20px auto;
+      background: white;
+      padding: 20px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
     }
-    .info-section, .logs-section {
-      margin-top: 20px;
+    h1 {
+      font-size: 24px;
+      text-align: center;
+    }
+    .info {
+      margin-bottom: 20px;
+    }
+    .info div {
+      margin-bottom: 10px;
+    }
+    .logs {
+      max-height: 300px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
       padding: 10px;
-      border: 1px solid #ccc;
+      background: #fafafa;
       border-radius: 5px;
     }
-    .logs-section ul {
-      list-style: none;
-      padding: 0;
-      max-height: 200px;
-      overflow-y: auto;
-    }
-    .log-entry {
-      font-size: 0.9em;
-      color: #555;
-      margin: 4px 0;
-      border-bottom: 1px solid #eee;
-      padding-bottom: 4px;
-    }
-    .status {
-      font-weight: bold;
-      color: green;
-    }
-    .status.offline {
-      color: red;
+    .logs p {
+      margin: 0;
+      font-size: 14px;
+      color: #333;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Monitor de Nodo</h1>
-
-    <div class="info-section">
-      <h2>Información del Nodo</h2>
-      <p><strong>ID:</strong> <span id="node-id">Cargando...</span></p>
-      <p><strong>Puerto:</strong> <span id="node-port">Cargando...</span></p>
-      <p><strong>Estado:</strong> <span id="node-status" class="status">Cargando...</span></p>
-      <p><strong>Líder Actual:</strong> <span id="node-leader">Cargando...</span></p>
+    <h1>Información del Nodo</h1>
+    <div class="info">
+      <div><strong>Puerto:</strong> <span id="port">Cargando...</span></div>
+      <div><strong>ID:</strong> <span id="id">Cargando...</span></div>
+      <div><strong>Estado:</strong> <span id="status">Cargando...</span></div>
     </div>
-
-    <div class="logs-section">
+    
+    <div id="log-list">
       <h2>Logs</h2>
-      <ul id="log-list">
-        <!-- Aquí se agregan los logs dinámicamente -->
-      </ul>
+      <ul id="logs"></ul>
     </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const socket = io(); // Conexión con el monitor
-    const nodeId = parseInt(new URLSearchParams(window.location.search).get('id')) || 1;
-    const nodePort = 4000 + nodeId;
+    const socket = io(); // Conexión al servidor
+    const logsContainer = document.getElementById('logs');
+    const portElement = document.getElementById('port');
+    const idElement = document.getElementById('id');
+    const statusElement = document.getElementById('status');
 
-    // Elementos de la interfaz
-    const nodeIdElement = document.getElementById('node-id');
-    const nodePortElement = document.getElementById('node-port');
-    const nodeStatusElement = document.getElementById('node-status');
-    const nodeLeaderElement = document.getElementById('node-leader');
-    const logListElement = document.getElementById('log-list');
+    const NODE_PORT = window.location.port; 
+    const NODE_ID = new URLSearchParams(window.location.search).get('id') || 'Desconocido';
 
-    // Inicializar datos del nodo
-    nodeIdElement.textContent = nodeId;
-    nodePortElement.textContent = nodePort;
+    portElement.textContent = NODE_PORT;
+    idElement.textContent = NODE_ID;
+    statusElement.textContent = 'Activo';
 
-    socket.on('updateNodos', (nodos) => {
-      const nodo = nodos.find(n => n.id === nodeId);
+    socket.on('otherLog', (log) => {
+      const logsList = document.getElementById('logs');
+      const li = document.createElement('li');
+      li.classList.add('log-entry');
+      li.textContent = log;
+      logsList.appendChild(li);
 
-      if (nodo) {
-        nodeStatusElement.textContent = nodo.estado === 'activo' ? 'Activo' : 'Inactivo';
-        nodeStatusElement.className = `status ${nodo.estado === 'activo' ? '' : 'offline'}`;
-        nodeLeaderElement.textContent = nodo.esLider ? 'Este Nodo' : `Nodo ${nodos.find(n => n.esLider)?.id || 'Ninguno'}`;
-      } else {
-        nodeStatusElement.textContent = 'No Registrado';
-        nodeStatusElement.className = 'status offline';
-        nodeLeaderElement.textContent = 'Desconocido';
+      if (logsList.childElementCount > 50) {
+        logsList.removeChild(logsList.firstChild);
       }
     });
 
-    socket.on('newLog', (log) => {
-      const logEntry = document.createElement('li');
-      logEntry.textContent = log;
-      logEntry.className = 'log-entry';
-      logListElement.appendChild(logEntry);
-
-      if (logListElement.childElementCount > 50) {
-        logListElement.removeChild(logListElement.firstChild);
-      }
-    });
-
-    // Simular estado del nodo
-    socket.emit('updateNodos', [{ id: nodeId, estado: 'activo', esLider: false }]);
+    socket.on('connect', () => {
+    socket.emit('getLogs');
+  })
   </script>
 </body>
 </html>

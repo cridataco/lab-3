@@ -49,7 +49,7 @@
   <script>
     const socket = io();
 
-    socket.on('updateServers', (servers) => {
+    socket.on('updateNodos', (servers) => {
       const serversList = document.getElementById('servers');
       serversList.innerHTML = '';
       servers.forEach(server => {
