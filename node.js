@@ -4,11 +4,13 @@ const http = require('http');
 const socketIo = require('socket.io-client');
 const path = require('path');
 const { log } = require('console');
+const dotenv = require('dotenv');
 
 const app = express();
 const server = http.createServer(app);
 const io = require('socket.io')(server);
 const cors = require('cors');
+dotenv.config( { path: './.env' } );
 
 app.use(cors({
     origin: '*', 
@@ -16,8 +18,8 @@ app.use(cors({
     allowedHeaders: ['Content-Type']
   }));
 
-const NODE_ID = parseInt(process.env.NODE_ID) || 2;
-const MONITOR_URL = 'http://localhost:3000';
+const NODE_ID = process.env.NODE_ID;
+const MONITOR_URL = `http://${process.env.MONITOR_IP}:3000`;
 const PORT = 4000 + NODE_ID;
 
 let logs = [];

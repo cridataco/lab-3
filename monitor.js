@@ -1,15 +1,17 @@
+const { Client } = require('ssh2');
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
 
-const app = express();
+const app = express();  
 const server = http.createServer(app);
 const cors = require('cors');
 const io = socketIo(server);
 
 const PORT = 3000;
-
+let node = 0;
+const conn = new Client();
 app.use(express.json());
 app.use(cors());
 
@@ -27,6 +29,45 @@ function logMessage(message) {
 app.get('/logs', (req, res) => {
     res.json({ logs });
 });
+
+app.post('/launch', (req, res) => {
+    const connection = new Client();
+    connection.on('ready', () => {
+      logMessage("Cliente SSH conectado");
+    node++
+      const randomPort = `400${node}`;
+      const dockerCommand = `sudo docker run -d -p ${randomPort}:${randomPort} --name ${randomPort} -e NODE_ID=${node} -e MONITOR_IP=192.168.137.221 imagen`;
+  
+      logMessage(`Ejecutando comando Docker: ${dockerCommand}`);
+  
+      connection.exec(dockerCommand, (err, stream) => {
+        if (err) {
+          logMessage(`Error ejecutando el comando Docker: ${err.message}`);
+          connection.end();
+          return res.status(500).send('Error ejecutando el comando Docker');
+        }
+  
+        stream.on('close', async (code, signal) => {
+          registerInstance(host, randomPort);
+          usedPorts.push(randomPort);
+          connection.end();
+          res.status(200).send(`Instancia lanzada en puerto: ${randomPort}`);
+        }).on('data', (data) => {
+          console.log(`STDOUT: ${data}`);
+        }).stderr.on('data', (data) => {
+          console.error(`STDERR: ${data}`);
+        });
+      });
+    }).on('error', (err) => {
+      logMessage(`Error de conexión: ${err.message}`);
+      res.status(500).send('Error de conexión SSH');
+    }).connect({
+      host: '192.168.137.221',
+      port: 22,
+      username: 'deam',
+      password: 'deam',
+    });
+  });
 
 app.post('/agregarNodo', (req, res) => {
     const { id } = req.body;

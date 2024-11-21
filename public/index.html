@@ -50,7 +50,7 @@
     <h1>Información del Nodo</h1>
     <div class="info">
       <div><strong>Puerto:</strong> <span id="port">Cargando...</span></div>
-      <div><strong>ID:</strong> <span id="id">Cargando...</span></div>
+      <!-- <div><strong>ID:</strong> <span id="id">Cargando...</span></div> -->
       <div><strong>Estado:</strong> <span id="status">Cargando...</span></div>
     </div>
     
@@ -69,10 +69,10 @@
     const statusElement = document.getElementById('status');
 
     const NODE_PORT = window.location.port; 
-    const NODE_ID = new URLSearchParams(window.location.search).get('id') || 'Desconocido';
+    // const NODE_ID = new URLSearchParams(window.location.search).get('id') || 'Desconocido';
 
     portElement.textContent = NODE_PORT;
-    idElement.textContent = NODE_ID;
+    // idElement.textContent = NODE_ID;
     statusElement.textContent = 'Activo';
 
     socket.on('otherLog', (log) => {
