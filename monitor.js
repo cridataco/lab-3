@@ -23,6 +23,7 @@ function logMessage(message) {
     io.emit('newLog', timestampedMessage); // Enviar log a los clientes conectados
 }
 
+// Endpoint para obtener todos los logs
 app.get('/logs', (req, res) => {
     res.json({ logs });
 });
@@ -39,15 +40,14 @@ app.post('/agregarNodo', (req, res) => {
     logMessage(`Nodo ${id} agregado al sistema.`);
 
     if (nodos.length === 1) {
-        nuevoNodo.esLider = true;
-        liderId = id;
-        logMessage(`Nodo ${id} es el único en la red y se ha convertido en el líder.`);
+        asignarLider(id);
     }
 
     io.emit('updateNodos', nodos);
     res.status(201).send(`Nodo ${id} agregado exitosamente.`);
 });
 
+// Detener un nodo
 app.post('/detenerNodo', (req, res) => {
     const { id } = req.body;
     const nodo = nodos.find(n => n.id === id);
@@ -63,9 +63,8 @@ app.post('/detenerNodo', (req, res) => {
     logMessage(`Nodo ${id} detenido.`);
 
     if (nodo.esLider) {
-        nodo.esLider = false;
         liderId = null;
-        logMessage(`El nodo ${id} era el líder y ha sido detenido. Se requiere una nueva elección.`);
+        logMessage(`El líder ${id} ha sido detenido. Se requiere una nueva elección.`);
         io.emit('liderCaido'); // Notificar a los nodos
     }
 
@@ -73,36 +72,41 @@ app.post('/detenerNodo', (req, res) => {
     res.send(`Nodo ${id} detenido.`);
 });
 
+// Marcar un nodo como caído
 app.post('/marcarNodoCaido', (req, res) => {
     const { id } = req.body;
     const nodo = nodos.find(n => n.id === id);
-    if (!nodo || nodo.estado === 'detenido') return res.status(404).send('Nodo no encontrado o ya detenido.');
+
+    if (!nodo || nodo.estado === 'detenido') {
+        logMessage(`Intento de marcar como caído un nodo inexistente o detenido con ID ${id}.`);
+        return res.status(404).send('Nodo no encontrado o ya detenido.');
+    }
 
     nodo.estado = 'caido';
     logMessage(`Nodo ${id} marcado como caído.`);
+
     if (nodo.esLider) {
         liderId = null;
         logMessage(`El líder ${id} ha caído. Se requiere una nueva elección.`);
-        io.emit('liderCaido'); // Notificar a los nodos
+        io.emit('liderCaido');
     }
 
     io.emit('updateNodos', nodos);
     res.status(200).send(`Nodo ${id} marcado como caído.`);
 });
 
+// Asignar un nuevo líder
+function asignarLider(id) {
+    liderId = id;
+    nodos.forEach(n => n.esLider = n.id === liderId);
+    logMessage(`Nodo ${id} es el nuevo líder.`);
+    io.emit('updateNodos', nodos);
+}
 
 // Notificar un nuevo líder
 app.post('/nuevoLider', (req, res) => {
     const { id } = req.body;
-    const nodo = nodos.find(n => n.id === id);
-    if (!nodo) {
-        logMessage(`Intento de declarar líder un nodo inexistente con ID ${id}.`);
-        return res.status(404).send('Nodo no encontrado.');
-    }
-    liderId = id;
-    nodos.forEach(n => (n.esLider = n.id === liderId));
-    logMessage(`Nodo ${id} se ha declarado como el nuevo líder.`);
-    io.emit('updateNodos', nodos);
+    asignarLider(id);
     res.send(`Líder actualizado al nodo ${id}.`);
 });
 
@@ -120,25 +124,24 @@ app.get('/nodos', (req, res) => {
     res.json(nodos);
 });
 
-// Endpoint de health check para el líder
-app.get('/healthCheckLider', (req, res) => {
-    if (liderId) {
-        res.send(`Líder ${liderId} está activo.`);
-    } else {
-        res.status(404).send('No hay líder actual.');
-    }
-});
-
+// Manejo de conexión de Socket.IO
 io.on('connection', (socket) => {
+    logMessage('Un cliente se ha conectado.');
     socket.emit('updateNodos', nodos);
     logs.forEach(log => socket.emit('newLog', log));
+
+    socket.on('disconnect', () => {
+        logMessage('Un cliente se ha desconectado.');
+    });
 });
 
-server.listen(PORT, () => {
-    logMessage(`Servidor de monitoreo escuchando en el puerto ${PORT}`);
-});
-
+// Configuración del servidor estático
 app.use(express.static(path.join(__dirname)));
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public/monitor.html'));
+});
+
+// Iniciar servidor
+server.listen(PORT, () => {
+    logMessage(`Servidor de monitoreo escuchando en el puerto ${PORT}`);
 });

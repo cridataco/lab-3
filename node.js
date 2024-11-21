@@ -6,7 +6,7 @@ const socketIo = require('socket.io-client');
 const app = express();
 const server = http.createServer(app);
 
-const NODE_ID = parseInt(process.env.NODE_ID) || 3;
+const NODE_ID = parseInt(process.env.NODE_ID) || 2;
 const MONITOR_URL = 'http://localhost:3000';
 const PORT = 4000 + NODE_ID;
 
@@ -18,12 +18,13 @@ let enProcesoDeEleccion = false;
 const socket = socketIo(MONITOR_URL);
 
 socket.on('connect', () => {
-    console.log(`Nodo ${NODE_ID} conectado al monitor`);
+    logMessage(`Nodo ${NODE_ID} conectado al monitor`);
 });
 
 socket.on('updateNodos', (nodos) => {
     console.log(`Nodo ${NODE_ID} recibió actualización de nodos:`, nodos);
     liderId = nodos.find(nodo => nodo.esLider)?.id || null;
+    logMessage(`Líder actual reportado por el monitor: Nodo ${liderId}.`);
 });
 
 // Función para registrar logs
@@ -39,23 +40,26 @@ async function realizarHealthCheck() {
     setTimeout(async () => {
         if (liderId) {
             try {
-                const response = await axios.get(`${MONITOR_URL}/lider`);
-                if (response.data.liderId === liderId) {
-                    await axios.get(`http://localhost:${4000 + liderId}/healthCheck`);
-                    logMessage(`Health check al líder con ID ${liderId} exitoso.`);
+                if (liderId === NODE_ID) {
+                    logMessage(`El nodo ${NODE_ID} es el líder. No se realiza health check a sí mismo.`);
                 } else {
-                    throw new Error('El líder reportado no coincide.');
+                    const { data } = await axios.get(`${MONITOR_URL}/nodos`);
+                    const liderActivo = data.find(nodo => nodo.id === liderId && nodo.estado === 'activo');
+                    if (!liderActivo) {
+                        logMessage(`Líder ${liderId} no está activo. Iniciando elección.`);
+                        iniciarEleccion();
+                    } else {
+                        logMessage(`Health check al líder ${liderId} exitoso.`);
+                    }
                 }
             } catch (error) {
-                logMessage(`Health check fallido al líder con ID ${liderId}. Iniciando elección.`);
-                await axios.post(`${MONITOR_URL}/marcarNodoCaido`, { id: liderId }); // Marcar como caído en el monitor
+                logMessage(`Error en el health check del líder ${liderId}: ${error.message}.`);
                 iniciarEleccion();
             }
         }
-        realizarHealthCheck(); // Reiniciar el health check
+        realizarHealthCheck();
     }, intervalo);
 }
-
 
 async function iniciarEleccion() {
     if (enProcesoDeEleccion) return;
@@ -102,8 +106,8 @@ server.listen(PORT, async () => {
     logMessage(`Nodo ${NODE_ID} escuchando en el puerto ${PORT}`);
     try {
         await axios.post(`${MONITOR_URL}/agregarNodo`, { id: NODE_ID });
-        const { data } = await axios.get(`${MONITOR_URL}/lider`);
-        liderId = data.liderId;
+        const { data } = await axios.get(`${MONITOR_URL}/nodos`);
+        liderId = data.find(nodo => nodo.esLider)?.id || null;
         logMessage(`Líder actual es el nodo ${liderId}.`);
         realizarHealthCheck();
     } catch (error) {
