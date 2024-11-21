@@ -21,6 +21,7 @@ app.use(cors({
 const NODE_ID = process.env.NODE_ID;
 const MONITOR_URL = `http://${process.env.MONITOR_IP}:3000`;
 const PORT = 4000 + NODE_ID;
+const LOCALHOST_IP = LOCALHOST_IP;
 
 let logs = [];
 let liderId = null;
@@ -54,7 +55,7 @@ async function realizarHealthCheck() {
                 if (liderId === NODE_ID) {
                     logMessage(`El nodo ${NODE_ID} es el líder. No realiza health check a sí mismo.`);
                 } else {
-                    await axios.get(`http://localhost:${4000 + liderId}/health`);
+                    await axios.get(`http://${LOCALHOST_IP}:${4000 + liderId}/health`);
                     logMessage(`Health check al líder ${liderId} exitoso.`);
                 }
             } catch (error) {
@@ -93,7 +94,7 @@ async function iniciarEleccion() {
     } else {
         for (const nodo of nodosMayores) {
             try {
-                await axios.post(`http://localhost:${4000 + nodo.id}/eleccion`, { id: NODE_ID });
+                await axios.post(`http://${LOCALHOST_IP}:${4000 + nodo.id}/eleccion`, { id: NODE_ID });
                 logMessage(`Nodo ${NODE_ID} recibió respuesta de elección del nodo ${nodo.id}.`);
             } catch {
                 logMessage(`Nodo ${nodo.id} no respondió a la solicitud de elección.`);

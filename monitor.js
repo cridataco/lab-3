@@ -48,8 +48,8 @@ app.post('/launch', (req, res) => {
         }
   
         stream.on('close', async (code, signal) => {
-          registerInstance(host, randomPort);
-          usedPorts.push(randomPort);
+        //   registerInstance(host, randomPort);
+        //   usedPorts.push(randomPort);
           connection.end();
           res.status(200).send(`Instancia lanzada en puerto: ${randomPort}`);
         }).on('data', (data) => {
@@ -62,7 +62,7 @@ app.post('/launch', (req, res) => {
       logMessage(`Error de conexión: ${err.message}`);
       res.status(500).send('Error de conexión SSH');
     }).connect({
-      host: '192.168.137.221',
+      host: '192.168.137.89',
       port: 22,
       username: 'deam',
       password: 'deam',
