@@ -21,7 +21,7 @@ app.use(cors({
 const NODE_ID = process.env.NODE_ID;
 const MONITOR_URL = `http://${process.env.MONITOR_IP}:3000`;
 const PORT = 4000 + NODE_ID;
-const LOCALHOST_IP = LOCALHOST_IP;
+const LOCALHOST_IP = process.env.LOCALHOST_IP;
 
 let logs = [];
 let liderId = null;
