@@ -2,11 +2,12 @@ const express = require('express');
 const axios = require('axios');
 const http = require('http');
 const socketIo = require('socket.io-client');
+const { log } = require('console');
 
 const app = express();
 const server = http.createServer(app);
 
-const NODE_ID = parseInt(process.env.NODE_ID) || 2;
+const NODE_ID = parseInt(process.env.NODE_ID) || 1;
 const MONITOR_URL = 'http://localhost:3000';
 const PORT = 4000 + NODE_ID;
 
@@ -36,30 +37,31 @@ function logMessage(message) {
 }
 
 async function realizarHealthCheck() {
-    const intervalo = Math.floor(Math.random() * 5000) + 5000; // Entre 5 y 10 segundos
+    const intervalo = Math.floor(Math.random() * 5000) + 5000; 
     setTimeout(async () => {
         if (liderId) {
             try {
                 if (liderId === NODE_ID) {
-                    logMessage(`El nodo ${NODE_ID} es el líder. No se realiza health check a sí mismo.`);
+                    logMessage(`El nodo ${NODE_ID} es el líder. No realiza health check a sí mismo.`);
                 } else {
-                    const { data } = await axios.get(`${MONITOR_URL}/nodos`);
-                    const liderActivo = data.find(nodo => nodo.id === liderId && nodo.estado === 'activo');
-                    if (!liderActivo) {
-                        logMessage(`Líder ${liderId} no está activo. Iniciando elección.`);
-                        iniciarEleccion();
-                    } else {
-                        logMessage(`Health check al líder ${liderId} exitoso.`);
-                    }
+                    await axios.get(`http://localhost:${4000 + liderId}/health`);
+                    logMessage(`Health check al líder ${liderId} exitoso.`);
                 }
             } catch (error) {
-                logMessage(`Error en el health check del líder ${liderId}: ${error.message}.`);
+                logMessage(`El líder ${liderId} no respondió al health check: ${error.message}`);
+                try {
+                    await axios.post(`${MONITOR_URL}/marcarNodoCaido`, { id: liderId });
+                    logMessage(`Se notificó al monitor que el líder ${liderId} está caído.`);
+                } catch (monitorError) {
+                    logMessage(`Error al notificar al monitor sobre el líder caído: ${monitorError.message}`);
+                }
                 iniciarEleccion();
             }
         }
-        realizarHealthCheck();
+        realizarHealthCheck(); 
     }, intervalo);
 }
+
 
 async function iniciarEleccion() {
     if (enProcesoDeEleccion) return;
@@ -101,6 +103,10 @@ async function declararseLider() {
         logMessage(`Error al notificar al monitor del nuevo líder: ${error.message}`);
     }
 }
+
+app.get('/health', (req, res) => {
+    res.status(200).send('OK');
+});
 
 server.listen(PORT, async () => {
     logMessage(`Nodo ${NODE_ID} escuchando en el puerto ${PORT}`);
