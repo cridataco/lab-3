@@ -2,6 +2,7 @@ const express = require('express');
 const axios = require('axios');
 const http = require('http');
 const socketIo = require('socket.io-client');
+const path = require('path');
 const { log } = require('console');
 
 const app = express();
@@ -106,6 +107,11 @@ async function declararseLider() {
 
 app.get('/health', (req, res) => {
     res.status(200).send('OK');
+});
+
+app.use(express.static(path.join(__dirname)));
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public/index.html'));
 });
 
 server.listen(PORT, async () => {

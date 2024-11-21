@@ -1,67 +1,113 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Estado del Nodo</title>
-    <style>
-        body { font-family: Arial, sans-serif; }
-        .leader { color: green; font-weight: bold; }
-        .log, .health-check { margin: 5px 0; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitor de Nodo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    h1, h2 {
+      color: #333;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+    }
+    .info-section, .logs-section {
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    .logs-section ul {
+      list-style: none;
+      padding: 0;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .log-entry {
+      font-size: 0.9em;
+      color: #555;
+      margin: 4px 0;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 4px;
+    }
+    .status {
+      font-weight: bold;
+      color: green;
+    }
+    .status.offline {
+      color: red;
+    }
+  </style>
 </head>
 <body>
-    <h1>Estado del Nodo</h1>
-    <p><strong>ID del Nodo:</strong> <span id="node-id"></span></p>
-    <p><strong>Líder Actual:</strong> <span id="lider-id"></span></p>
-    <p id="is-leader" class="leader"></p>
+  <div class="container">
+    <h1>Monitor de Nodo</h1>
 
-    <h2>Health Checks al Líder</h2>
-    <div id="health-checks"></div>
+    <div class="info-section">
+      <h2>Información del Nodo</h2>
+      <p><strong>ID:</strong> <span id="node-id">Cargando...</span></p>
+      <p><strong>Puerto:</strong> <span id="node-port">Cargando...</span></p>
+      <p><strong>Estado:</strong> <span id="node-status" class="status">Cargando...</span></p>
+      <p><strong>Líder Actual:</strong> <span id="node-leader">Cargando...</span></p>
+    </div>
 
-    <h2>Logs</h2>
-    <div id="logs"></div>
+    <div class="logs-section">
+      <h2>Logs</h2>
+      <ul id="log-list">
+        <!-- Aquí se agregan los logs dinámicamente -->
+      </ul>
+    </div>
+  </div>
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io(); // Conexión con el monitor
+    const nodeId = parseInt(new URLSearchParams(window.location.search).get('id')) || 1;
+    const nodePort = 4000 + nodeId;
 
-        const nodeIdEl = document.getElementById('node-id');
-        const liderIdEl = document.getElementById('lider-id');
-        const isLeaderEl = document.getElementById('is-leader');
-        const healthChecksEl = document.getElementById('health-checks');
-        const logsEl = document.getElementById('logs');
+    // Elementos de la interfaz
+    const nodeIdElement = document.getElementById('node-id');
+    const nodePortElement = document.getElementById('node-port');
+    const nodeStatusElement = document.getElementById('node-status');
+    const nodeLeaderElement = document.getElementById('node-leader');
+    const logListElement = document.getElementById('log-list');
 
-        socket.on('connect', async () => {
-            const response = await fetch('/estado');
-            const { esLider, liderId } = await response.json();
+    // Inicializar datos del nodo
+    nodeIdElement.textContent = nodeId;
+    nodePortElement.textContent = nodePort;
 
-            nodeIdEl.textContent = `Nodo ${socket.id}`;
-            liderIdEl.textContent = liderId ? `Nodo ${liderId}` : 'Sin líder';
+    socket.on('updateNodos', (nodos) => {
+      const nodo = nodos.find(n => n.id === nodeId);
 
-            if (esLider) {
-                isLeaderEl.textContent = 'Este nodo es el líder.';
-            } else {
-                isLeaderEl.textContent = 'Este nodo no es el líder.';
-            }
-        });
+      if (nodo) {
+        nodeStatusElement.textContent = nodo.estado === 'activo' ? 'Activo' : 'Inactivo';
+        nodeStatusElement.className = `status ${nodo.estado === 'activo' ? '' : 'offline'}`;
+        nodeLeaderElement.textContent = nodo.esLider ? 'Este Nodo' : `Nodo ${nodos.find(n => n.esLider)?.id || 'Ninguno'}`;
+      } else {
+        nodeStatusElement.textContent = 'No Registrado';
+        nodeStatusElement.className = 'status offline';
+        nodeLeaderElement.textContent = 'Desconocido';
+      }
+    });
 
-        socket.on('healthCheck', ({ liderId, status }) => {
-            const check = document.createElement('p');
-            check.classList.add('health-check');
-            check.textContent = `Health check al líder ${liderId}: ${status}`;
-            healthChecksEl.appendChild(check);
-        });
+    socket.on('newLog', (log) => {
+      const logEntry = document.createElement('li');
+      logEntry.textContent = log;
+      logEntry.className = 'log-entry';
+      logListElement.appendChild(logEntry);
 
-        socket.on('log', (message) => {
-            const log = document.createElement('p');
-            log.classList.add('log');
-            log.textContent = message;
-            logsEl.appendChild(log);
-        });
+      if (logListElement.childElementCount > 50) {
+        logListElement.removeChild(logListElement.firstChild);
+      }
+    });
 
-        socket.on('nuevoLider', (nuevoLider) => {
-            liderIdEl.textContent = `Nodo ${nuevoLider}`;
-        });
-    </script>
+    // Simular estado del nodo
+    socket.emit('updateNodos', [{ id: nodeId, estado: 'activo', esLider: false }]);
+  </script>
 </body>
 </html>

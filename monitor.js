@@ -15,20 +15,17 @@ let nodos = [];
 let liderId = null;
 let logs = [];
 
-// Función para registrar logs con timestamp
 function logMessage(message) {
     const timestampedMessage = `${new Date().toISOString()} - ${message}`;
     console.log(timestampedMessage);
     logs.push(timestampedMessage);
-    io.emit('newLog', timestampedMessage); // Enviar log a los clientes conectados
+    io.emit('newLog', timestampedMessage); 
 }
 
-// Endpoint para obtener todos los logs
 app.get('/logs', (req, res) => {
     res.json({ logs });
 });
 
-// Agregar un nuevo nodo
 app.post('/agregarNodo', (req, res) => {
     const { id } = req.body;
     if (nodos.find(nodo => nodo.id === id)) {
@@ -47,7 +44,6 @@ app.post('/agregarNodo', (req, res) => {
     res.status(201).send(`Nodo ${id} agregado exitosamente.`);
 });
 
-// Detener un nodo
 app.post('/detenerNodo', (req, res) => {
     const { id } = req.body;
     const nodo = nodos.find(n => n.id === id);
@@ -65,14 +61,13 @@ app.post('/detenerNodo', (req, res) => {
     if (nodo.esLider) {
         liderId = null;
         logMessage(`El líder ${id} ha sido detenido. Se requiere una nueva elección.`);
-        io.emit('liderCaido'); // Notificar a los nodos
+        io.emit('liderCaido');
     }
 
     io.emit('updateNodos', nodos);
     res.send(`Nodo ${id} detenido.`);
 });
 
-// Marcar un nodo como caído
 app.post('/marcarNodoCaido', (req, res) => {
     const { id } = req.body;
     const nodo = nodos.find(n => n.id === id);
@@ -95,7 +90,6 @@ app.post('/marcarNodoCaido', (req, res) => {
     res.status(200).send(`Nodo ${id} marcado como caído.`);
 });
 
-// Asignar un nuevo líder
 function asignarLider(id) {
     liderId = id;
     nodos.forEach(n => n.esLider = n.id === liderId);
@@ -103,14 +97,12 @@ function asignarLider(id) {
     io.emit('updateNodos', nodos);
 }
 
-// Notificar un nuevo líder
 app.post('/nuevoLider', (req, res) => {
     const { id } = req.body;
     asignarLider(id);
     res.send(`Líder actualizado al nodo ${id}.`);
 });
 
-// Obtener líder actual
 app.get('/lider', (req, res) => {
     if (liderId) {
         res.json({ liderId });
@@ -119,12 +111,10 @@ app.get('/lider', (req, res) => {
     }
 });
 
-// Obtener nodos
 app.get('/nodos', (req, res) => {
     res.json(nodos);
 });
 
-// Manejo de conexión de Socket.IO
 io.on('connection', (socket) => {
     logMessage('Un cliente se ha conectado.');
     socket.emit('updateNodos', nodos);
@@ -135,7 +125,6 @@ io.on('connection', (socket) => {
     });
 });
 
-// Configuración del servidor estático
 app.use(express.static(path.join(__dirname)));
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public/monitor.html'));
