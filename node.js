@@ -70,10 +70,10 @@ async function realizarHealthCheck() {
                 } catch (monitorError) {
                     logMessage(`Error al notificar al monitor sobre el líder caído: ${monitorError.message}`);
                 }
-                iniciarEleccion();
+                await iniciarEleccion();
             }
         } else {
-            iniciarEleccion();
+            await iniciarEleccion();
         }
         realizarHealthCheck(); 
     }, intervalo);
