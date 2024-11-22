@@ -35,8 +35,8 @@ socket.on('connect', () => {
 });
 
 socket.on('updateNodos', (nodos) => {
-    logMessage(`Nodo ${NODE_ID} recibió actualización de nodos:`, nodos);
-    liderId = nodos.find(nodo => nodo.esLider)?.id || null;
+    console.log(`Nodo ${NODE_ID} recibió actualización de nodos:`, nodos ?? 'vacio');
+    liderId = Number.parseInt(nodos.find(nodo => nodo.esLider)?.id) || null;
     logMessage(`Líder actual reportado por el monitor: Nodo ${liderId}.`);
 });
 
@@ -58,8 +58,8 @@ async function realizarHealthCheck() {
                 if (Number.parseInt(liderId) == Number.parseInt(NODE_ID)) {
                     logMessage(`El nodo ${NODE_ID} es el líder. No realiza health check a sí mismo.`);
                 } else {
-                    logMessage(`http://localhost:${4000 + Number.parseInt(liderId)}/health`);
-                    await axios.get(`http://localhost:${4000 + Number.parseInt(liderId)}/health`);
+                    logMessage(`http://${LOCALHOST_IP}:${4000 + Number.parseInt(liderId)}/health`);
+                    await axios.get(`http://${LOCALHOST_IP}:${4000 + Number.parseInt(liderId)}/health`);
                     logMessage(`Health check al líder ${liderId} exitoso.`);
                 }
             } catch (error) {
@@ -113,7 +113,7 @@ async function declararseLider() {
     esLider = true;
     logMessage(`Nodo ${NODE_ID} se declara como líder.`);
     try {
-        await axios.post(`${MONITOR_URL}/nuevoLider`, { id: NODE_ID });
+        await axios.post(`${MONITOR_URL}/nuevoLider`, { id: Number.parseInt(NODE_ID) });
     } catch (error) {
         logMessage(`Error al notificar al monitor del nuevo líder: ${error.message}`);
     }

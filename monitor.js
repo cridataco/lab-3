@@ -119,7 +119,6 @@ app.post('/marcarNodoCaido', (req, res) => {
         logMessage(`Intento de marcar como caído un nodo inexistente o detenido con ID ${id}.`);
         return res.status(404).send('Nodo no encontrado o ya detenido.');
     }
-
     nodo.estado = 'caido';
     logMessage(`Nodo ${id} marcado como caído.`);
 
