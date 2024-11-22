@@ -32,14 +32,60 @@ app.get('/logs', (req, res) => {
     res.json({ logs });
 });
 
+app.post('/build', (req, res) => {
+    const connection = new Client();
+    connection.on('ready', () => {
+        logMessage("Cliente SSH conectado - build");
+        const dockerCommand = `
+          cd lab-3/ &&
+          git pull &&
+          sudo docker rmi -f imagen &&
+          sudo docker build -t imagen .
+        `; 
+      logMessage(`Ejecutando comando Docker: ${dockerCommand}`);
+  
+      connection.exec(dockerCommand, (err, stream) => {
+        if (err) {
+          logMessage(`Error ejecutando el comando Docker: ${err.message}`);
+          connection.end();
+          return res.status(500).send('Error ejecutando el comando Docker');
+        }
+  
+        stream.on('close', async (code, signal) => {
+          connection.end();
+          res.status(200).send(`Build completado.`);
+        }).on('data', (data) => {
+          console.log(`STDOUT: ${data}`);
+        }).stderr.on('data', (data) => {
+          console.error(`STDERR: ${data}`);
+        });
+      });
+    }).on('error', (err) => {
+      logMessage(`Error de conexión: ${err.message}`);
+      res.status(500).send('Error de conexión SSH');
+    }).connect({
+      host: NODE_IP,
+      port: 22,
+      username: 'deam',
+      password: 'deam',
+    });
+  });
+
 app.post('/launch', (req, res) => {
     const connection = new Client();
     connection.on('ready', () => {
-        logMessage("Cliente SSH conectado");
+        logMessage("Cliente SSH conectado - launch");
         node++
         const randomPort = `${4000 + node}`;
-        const dockerCommand = `sudo docker run -d -p ${randomPort}:${randomPort} --name ${randomPort} -e NODE_ID=${node} -e MONITOR_IP=${MONITOR_IP} -e LOCALHOST_IP=${NODE_IP} imagen`;
-        
+        // const dockerCommand = `sudo docker run -d -p ${randomPort}:${randomPort} --name ${randomPort} -e NODE_ID=${node} -e MONITOR_IP=${MONITOR_IP} -e LOCALHOST_IP=${NODE_IP} imagen`;
+        const dockerCommand = `
+          cd lab-3/ &&
+          git pull &&
+          sudo docker rmi -f imagen &&
+          sudo docker build -t imagen . &&
+          sudo docker run -d -p ${randomPort}:${randomPort} --name ${randomPort} \
+          -e NODE_ID=${node} -e MONITOR_IP=${MONITOR_IP} -e LOCALHOST_IP=${NODE_IP} imagen
+        `; 
       logMessage(`Ejecutando comando Docker: ${dockerCommand}`);
   
       connection.exec(dockerCommand, (err, stream) => {
@@ -84,7 +130,7 @@ app.post('/launch', (req, res) => {
 
     const connection = new Client();
     connection.on('ready', () => {
-        logMessage("Cliente SSH conectado");
+        logMessage("Cliente SSH conectado - stop");
         const container = `${4000 + Number.parseInt(nodo.id)}`;
         const dockerCommand = `sudo docker stop ${container}`;
 
@@ -196,14 +242,20 @@ app.post('/marcarNodoCaido', (req, res) => {
 
 function asignarLider(id) {
     liderId = id;
-    nodos.forEach(n => n.esLider = n.id === liderId);
-    logMessage(`Nodo ${id} es el nuevo líder.`);
+    nodos.forEach((n) => {
+        n.esLider = n.id == liderId;
+        if (n.esLider){
+            logMessage(`Nodo ${id} es el nuevo líder.`);
+        } 
+    });
+    console.log(nodos);
     io.emit('updateNodos', nodos);
 }
 
 app.post('/nuevoLider', (req, res) => {
     const { id } = req.body;
     asignarLider(id);
+    io.emit('updateNodos', nodos);
     res.send(`Líder actualizado al nodo ${id}.`);
 });
 

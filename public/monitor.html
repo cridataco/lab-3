@@ -35,6 +35,7 @@
 <body>
   <h1>Monitor de Servidores</h1>
   <button id="launch-btn">Lanzar Nueva Instancia</button>
+  <button id="build-btn">Build</button>
   <div id="server-list">
     <h2>Lista de Servidores</h2>
     <ul id="servers"></ul>
@@ -117,6 +118,27 @@
           return response.text(); // Obtén la respuesta del servidor
         } else {
           throw new Error('Error al lanzar la instancia');
+        }
+      })
+      .then(data => {
+        console.log('Respuesta del servidor:', data);
+      })
+      .catch(error => {
+        console.error('Error:', error);
+      });
+    });
+    document.getElementById('build-btn').addEventListener('click', () => {
+      fetch('/build', {
+        method: 'POST', // Método de la solicitud
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(response => {
+        if (response.ok) {
+          return response.text(); // Obtén la respuesta del servidor
+        } else {
+          throw new Error('Error al ejecutar el build');
         }
       })
       .then(data => {
