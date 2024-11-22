@@ -20,7 +20,7 @@ app.use(cors({
 
 const NODE_ID = process.env.NODE_ID;
 const MONITOR_URL = `http://${process.env.MONITOR_IP}:3000`;
-const PORT = 4000 + NODE_ID;
+const PORT = 4000 + Number.parseInt(NODE_ID);
 const LOCALHOST_IP = process.env.LOCALHOST_IP;
 
 let logs = [];
@@ -35,7 +35,7 @@ socket.on('connect', () => {
 });
 
 socket.on('updateNodos', (nodos) => {
-    console.log(`Nodo ${NODE_ID} recibió actualización de nodos:`, nodos);
+    logMessage(`Nodo ${NODE_ID} recibió actualización de nodos:`, nodos);
     liderId = nodos.find(nodo => nodo.esLider)?.id || null;
     logMessage(`Líder actual reportado por el monitor: Nodo ${liderId}.`);
 });
@@ -49,19 +49,23 @@ function logMessage(message) {
 
 async function realizarHealthCheck() {
     const intervalo = Math.floor(Math.random() * 5000) + 5000; 
+    logMessage(`se ejecuta health`);
+    logMessage(liderId);
     setTimeout(async () => {
         if (liderId) {
             try {
-                if (liderId === NODE_ID) {
+                logMessage(Number.parseInt(liderId) == Number.parseInt(NODE_ID));
+                if (Number.parseInt(liderId) == Number.parseInt(NODE_ID)) {
                     logMessage(`El nodo ${NODE_ID} es el líder. No realiza health check a sí mismo.`);
                 } else {
-                    await axios.get(`http://${LOCALHOST_IP}:${4000 + liderId}/health`);
+                    logMessage(`http://localhost:${4000 + Number.parseInt(liderId)}/health`);
+                    await axios.get(`http://localhost:${4000 + Number.parseInt(liderId)}/health`);
                     logMessage(`Health check al líder ${liderId} exitoso.`);
                 }
             } catch (error) {
                 logMessage(`El líder ${liderId} no respondió al health check: ${error.message}`);
                 try {
-                    await axios.post(`${MONITOR_URL}/marcarNodoCaido`, { id: liderId });
+                    await axios.post(`${MONITOR_URL}/marcarNodoCaido`, { id: Number.parseInt(liderId) });
                     logMessage(`Se notificó al monitor que el líder ${liderId} está caído.`);
                 } catch (monitorError) {
                     logMessage(`Error al notificar al monitor sobre el líder caído: ${monitorError.message}`);

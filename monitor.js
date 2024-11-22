@@ -33,11 +33,11 @@ app.get('/logs', (req, res) => {
 app.post('/launch', (req, res) => {
     const connection = new Client();
     connection.on('ready', () => {
-      logMessage("Cliente SSH conectado");
-    node++
-      const randomPort = `400${node}`;
-      const dockerCommand = `sudo docker run -d -p ${randomPort}:${randomPort} --name ${randomPort} -e NODE_ID=${node} -e MONITOR_IP=192.168.137.221 imagen`;
-  
+        logMessage("Cliente SSH conectado");
+        node++
+        const randomPort = `${4000 + node}`;
+        const dockerCommand = `sudo docker run -d -p ${randomPort}:${randomPort} --name ${randomPort} -e NODE_ID=${node} -e MONITOR_IP=192.168.100.181 -e LOCALHOST_IP=192.168.100.114 imagen`;
+        
       logMessage(`Ejecutando comando Docker: ${dockerCommand}`);
   
       connection.exec(dockerCommand, (err, stream) => {
@@ -62,7 +62,7 @@ app.post('/launch', (req, res) => {
       logMessage(`Error de conexión: ${err.message}`);
       res.status(500).send('Error de conexión SSH');
     }).connect({
-      host: '192.168.137.89',
+      host: '192.168.100.114',
       port: 22,
       username: 'deam',
       password: 'deam',
