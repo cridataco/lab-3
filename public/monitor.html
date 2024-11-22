@@ -50,16 +50,48 @@
     const socket = io();
 
     socket.on('updateNodos', (servers) => {
-      const serversList = document.getElementById('servers');
-      serversList.innerHTML = '';
-      servers.forEach(server => {
-        const li = document.createElement('li');
-        li.classList.add('server-entry');
-        li.textContent = `ID: ${server.id} - Estado: ${server.estado} ${server.esLider ? '(Líder)' : ''}`;
-        if (server.esLider) li.classList.add('leader');
-        serversList.appendChild(li);
+    const serversList = document.getElementById('servers');
+    serversList.innerHTML = '';
+    servers.forEach(server => {
+      const li = document.createElement('li');
+      li.classList.add('server-entry');
+
+      // Información del servidor
+      li.textContent = `ID: ${server.id} - Estado: ${server.estado} ${server.esLider ? '(Líder)' : ''}`;
+      if (server.esLider) li.classList.add('leader');
+
+      // Botón para detener el servidor
+      const stopButton = document.createElement('button');
+      stopButton.textContent = 'Detener';
+      stopButton.style.marginLeft = '10px';
+      stopButton.addEventListener('click', () => {
+        fetch(`/stop`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ id: server.id }) // Enviar el ID del servidor al backend
+        })
+        .then(response => {
+          if (response.ok) {
+            return response.json(); // Parsear la respuesta si es JSON
+          } else {
+            throw new Error('Error al detener el servidor');
+          }
+        })
+        .then(data => {
+          console.log('Respuesta del servidor:', data);
+        })
+        .catch(error => {
+          console.error('Error:', error);
+        });
       });
+
+      // Añadir el botón a la entrada del servidor
+      li.appendChild(stopButton);
+      serversList.appendChild(li);
     });
+  });
 
     socket.on('newLog', (log) => {
       const logsList = document.getElementById('logs');
@@ -89,11 +121,9 @@
       })
       .then(data => {
         console.log('Respuesta del servidor:', data);
-        alert(`Instancia lanzada: ${data}`); // Notifica al usuario
       })
       .catch(error => {
         console.error('Error:', error);
-        alert('Error al lanzar la instancia.');
       });
     });
   </script>

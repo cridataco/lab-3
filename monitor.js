@@ -14,6 +14,8 @@ let node = 0;
 const conn = new Client();
 app.use(express.json());
 app.use(cors());
+const MONITOR_IP = '192.168.1.12';
+const NODE_IP = '192.168.1.15'
 
 let nodos = [];
 let liderId = null;
@@ -36,7 +38,7 @@ app.post('/launch', (req, res) => {
         logMessage("Cliente SSH conectado");
         node++
         const randomPort = `${4000 + node}`;
-        const dockerCommand = `sudo docker run -d -p ${randomPort}:${randomPort} --name ${randomPort} -e NODE_ID=${node} -e MONITOR_IP=192.168.100.181 -e LOCALHOST_IP=192.168.100.114 imagen`;
+        const dockerCommand = `sudo docker run -d -p ${randomPort}:${randomPort} --name ${randomPort} -e NODE_ID=${node} -e MONITOR_IP=${MONITOR_IP} -e LOCALHOST_IP=${NODE_IP} imagen`;
         
       logMessage(`Ejecutando comando Docker: ${dockerCommand}`);
   
@@ -48,8 +50,6 @@ app.post('/launch', (req, res) => {
         }
   
         stream.on('close', async (code, signal) => {
-        //   registerInstance(host, randomPort);
-        //   usedPorts.push(randomPort);
           connection.end();
           res.status(200).send(`Instancia lanzada en puerto: ${randomPort}`);
         }).on('data', (data) => {
@@ -62,12 +62,74 @@ app.post('/launch', (req, res) => {
       logMessage(`Error de conexión: ${err.message}`);
       res.status(500).send('Error de conexión SSH');
     }).connect({
-      host: '192.168.100.114',
+      host: NODE_IP,
       port: 22,
       username: 'deam',
       password: 'deam',
     });
   });
+
+  app.post('/stop', (req, res) => {
+    const { id } = req.body;
+    const nodo = nodos.find(n => n.id === id);
+
+    if (!nodo) {
+        logMessage(`Intento de detener un nodo inexistente con ID ${id}.`);
+        return res.status(404).send('Nodo no encontrado.');
+    }
+    if (nodo.estado === 'detenido') {
+        logMessage(`Nodo ${id} ya estaba detenido.`);
+        return res.status(400).send('El nodo ya está detenido.');
+    }
+
+    const connection = new Client();
+    connection.on('ready', () => {
+        logMessage("Cliente SSH conectado");
+        const container = `${4000 + Number.parseInt(nodo.id)}`;
+        const dockerCommand = `sudo docker stop ${container}`;
+
+        logMessage(`Ejecutando comando Docker: ${dockerCommand}`);
+
+        connection.exec(dockerCommand, (err, stream) => {
+            if (err) {
+                logMessage(`Error ejecutando el comando Docker: ${err.message}`);
+                connection.end();
+                return res.status(500).send('Error ejecutando el comando Docker');
+            }
+
+            stream.on('close', (code, signal) => {
+                if (nodo.estado !== 'detenido') {
+                    nodo.estado = 'detenido';
+                    logMessage(`Nodo ${id} detenido.`);
+
+                    if (nodo.esLider) {
+                        liderId = null;
+                        logMessage(`El líder ${id} ha sido detenido. Se requiere una nueva elección.`);
+                        io.emit('liderCaido');
+                    }
+
+                    io.emit('updateNodos', nodos);
+                }
+
+                res.status(200).send(`Nodo ${id} detenido.`);
+                connection.end();
+            }).on('data', (data) => {
+                console.log(`STDOUT: ${data}`);
+            }).stderr.on('data', (data) => {
+                console.error(`STDERR: ${data}`);
+            });
+        });
+    }).on('error', (err) => {
+        logMessage(`Error de conexión: ${err.message}`);
+        res.status(500).send('Error de conexión SSH');
+    }).connect({
+        host: NODE_IP,
+        port: 22,
+        username: 'deam',
+        password: 'deam',
+    });
+});
+
 
 app.post('/agregarNodo', (req, res) => {
     const { id } = req.body;

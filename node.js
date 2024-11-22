@@ -72,6 +72,8 @@ async function realizarHealthCheck() {
                 }
                 iniciarEleccion();
             }
+        } else {
+            iniciarEleccion();
         }
         realizarHealthCheck(); 
     }, intervalo);
