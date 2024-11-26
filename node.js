@@ -131,7 +131,7 @@ app.post('/eleccion', async (req, res) => {
 
         // Inicia una nueva elección si no está en proceso
         if (!enProcesoDeEleccion) {
-            await iniciarEleccion();
+            await declararseLider();
         }
     } else {
         logMessage(`Nodo ${NODE_ID} ignora la solicitud de elección del nodo ${id}, ya que su ID es menor o igual.`);
