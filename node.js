@@ -100,6 +100,7 @@ async function iniciarEleccion() {
     } else {
         for (const nodo of nodosMayores) {
             try {
+                logMessage(`http://${LOCALHOST_IP}:${4000 + Integer.parseInt(nodo.id)}/eleccion`);
                 await axios.post(`http://${LOCALHOST_IP}:${4000 + Integer.parseInt(nodo.id)}/eleccion`, { id: NODE_ID });
                 logMessage(`Nodo ${NODE_ID} recibió respuesta de elección del nodo ${nodo.id}.`);
             } catch {
