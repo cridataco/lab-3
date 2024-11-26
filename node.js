@@ -100,7 +100,7 @@ async function iniciarEleccion() {
     } else {
         for (const nodo of nodosMayores) {
             try {
-                await axios.post(`http://${LOCALHOST_IP}:${4000 + nodo.id}/eleccion`, { id: NODE_ID });
+                await axios.post(`http://${LOCALHOST_IP}:${4000 + Integer.parseInt(nodo.id)}/eleccion`, { id: NODE_ID });
                 logMessage(`Nodo ${NODE_ID} recibió respuesta de elección del nodo ${nodo.id}.`);
             } catch {
                 logMessage(`Nodo ${nodo.id} no respondió a la solicitud de elección.`);
@@ -111,6 +111,7 @@ async function iniciarEleccion() {
 }
 
 app.post('/eleccion', async (req, res) => {
+    logMessage(`Recibió solicitud de elección.`);
     const { id } = req.body;
 
     if (!id) {
