@@ -14,8 +14,8 @@ let node = 0;
 const conn = new Client();
 app.use(express.json());
 app.use(cors());
-const MONITOR_IP = '192.168.1.12';
-const NODE_IP = '192.168.1.15'
+const MONITOR_IP = '192.168.1.14';
+const NODE_IP = '192.168.1.17';
 
 let nodos = [];
 let liderId = null;
@@ -79,10 +79,6 @@ app.post('/launch', (req, res) => {
         const randomPort = `${4000 + node}`;
         // const dockerCommand = `sudo docker run -d -p ${randomPort}:${randomPort} --name ${randomPort} -e NODE_ID=${node} -e MONITOR_IP=${MONITOR_IP} -e LOCALHOST_IP=${NODE_IP} imagen`;
         const dockerCommand = `
-          cd lab-3/ &&
-          git pull &&
-          sudo docker rmi -f imagen &&
-          sudo docker build -t imagen . &&
           sudo docker run -d -p ${randomPort}:${randomPort} --name ${randomPort} \
           -e NODE_ID=${node} -e MONITOR_IP=${MONITOR_IP} -e LOCALHOST_IP=${NODE_IP} imagen
         `; 
