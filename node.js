@@ -96,24 +96,20 @@ async function iniciarEleccion() {
     }
 
     if (nodosMayores.length === 0) {
-        // Si no hay nodos mayores activos, se declara líder
-        await declararseLider();
+        declararseLider();
     } else {
-        // Intenta contactar nodos mayores
         for (const nodo of nodosMayores) {
             try {
-                const url = `http://${LOCALHOST_IP}:${4000 + Number.parseInt(nodo.id)}/eleccion`;
-                logMessage(`Enviando solicitud de elección al nodo en ${url}`);
-                await axios.post(url, { id: NODE_ID });
+
+                // await axios.post(`http://${LOCALHOST_IP}:${4000 + Number.parseInt(nodo.id)}/eleccion`, { id: NODE_ID });
+                // logMessage(`Nodo ${NODE_ID} recibió respuesta de elección del nodo ${nodo.id}.`);
             } catch {
                 logMessage(`Nodo ${nodo.id} no respondió a la solicitud de elección.`);
             }
         }
     }
-
     enProcesoDeEleccion = false;
 }
-
 
 app.post('/eleccion', async (req, res) => {
     logMessage(`Recibió solicitud de elección.`);
@@ -127,15 +123,23 @@ app.post('/eleccion', async (req, res) => {
     logMessage(`Nodo ${NODE_ID} recibió solicitud de elección del nodo ${id}.`);
 
     if (Number.parseInt(id) < Number.parseInt(NODE_ID)) {
-        logMessage(`Nodo ${NODE_ID} responde a la elección del nodo ${id}, ya que tiene un ID mayor.`);
+        logMessage(`Nodo ${NODE_ID} responde a la elección del nodo ${id}, tiene un ID mayor.`);
         res.status(200).send('OK');
-        return; // Aquí termina el manejo de la solicitud.
+
+        // Inicia una nueva elección si no está en proceso
+        if (!enProcesoDeEleccion) {
+            logMessage(`Nodo ${NODE_ID} se declara como líder.`);
+            try {
+                await axios.post(`${MONITOR_URL}/nuevoLider`, { id: Number.parseInt(id) });
+            } catch (error) {
+                logMessage(`Error al notificar al monitor del nuevo líder: ${error.message}`);
+            }
+        }
+    } else {
+        logMessage(`Nodo ${NODE_ID} ignora la solicitud de elección del nodo ${id}, ya que su ID es menor o igual.`);
+        res.status(200).send('OK');
     }
-
-    logMessage(`Nodo ${NODE_ID} ignora la solicitud de elección del nodo ${id}, ya que tiene un ID menor o igual.`);
-    res.status(200).send('OK');
 });
-
 
 
 async function declararseLider() {
