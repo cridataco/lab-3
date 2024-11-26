@@ -52,6 +52,7 @@ app.post('/build', (req, res) => {
         }
   
         stream.on('close', async (code, signal) => {
+          logMessage(`Build completado.`);
           connection.end();
           res.status(200).send(`Build completado.`);
         }).on('data', (data) => {
@@ -154,6 +155,67 @@ app.post('/launch', (req, res) => {
                 }
 
                 res.status(200).send(`Nodo ${id} detenido.`);
+                connection.end();
+            }).on('data', (data) => {
+                console.log(`STDOUT: ${data}`);
+            }).stderr.on('data', (data) => {
+                console.error(`STDERR: ${data}`);
+            });
+        });
+    }).on('error', (err) => {
+        logMessage(`Error de conexión: ${err.message}`);
+        res.status(500).send('Error de conexión SSH');
+    }).connect({
+        host: NODE_IP,
+        port: 22,
+        username: 'deam',
+        password: 'deam',
+    });
+});
+
+  app.post('/start', (req, res) => {
+    const { id } = req.body;
+    const nodo = nodos.find(n => n.id === id);
+
+    if (!nodo) {
+        logMessage(`Intento de detener un nodo inexistente con ID ${id}.`);
+        return res.status(404).send('Nodo no encontrado.');
+    }
+    if (nodo.estado === 'activo') {
+        logMessage(`Nodo ${id} ya estaba activo.`);
+        return res.status(400).send('El nodo ya está activo.');
+    }
+
+    const connection = new Client();
+    connection.on('ready', () => {
+        logMessage("Cliente SSH conectado - start");
+        const container = `${4000 + Number.parseInt(nodo.id)}`;
+        const dockerCommand = `sudo docker start ${container}`;
+
+        logMessage(`Ejecutando comando Docker: ${dockerCommand}`);
+
+        connection.exec(dockerCommand, (err, stream) => {
+            if (err) {
+                logMessage(`Error ejecutando el comando Docker: ${err.message}`);
+                connection.end();
+                return res.status(500).send('Error ejecutando el comando Docker');
+            }
+
+            stream.on('close', (code, signal) => {
+                if (nodo.estado !== 'activo') {
+                    nodo.estado = 'activo';
+                    logMessage(`Nodo ${id} activo.`);
+
+                    // if (nodo.esLider) {
+                    //     liderId = null;
+                    //     logMessage(`El líder ${id} ha sido detenido. Se requiere una nueva elección.`);
+                    //     io.emit('liderCaido');
+                    // }
+
+                    io.emit('updateNodos', nodos);
+                }
+
+                res.status(200).send(`Nodo ${id} activo.`);
                 connection.end();
             }).on('data', (data) => {
                 console.log(`STDOUT: ${data}`);

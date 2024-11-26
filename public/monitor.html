@@ -107,31 +107,63 @@
 
     // Actualiza la lista de servidores
     socket.on('updateNodos', (servers) => {
-      const serversList = document.getElementById('servers');
-      serversList.innerHTML = '';
-      servers.forEach(server => {
-        const li = document.createElement('li');
-        li.classList.add('server-entry');
-        li.textContent = `ID: ${server.id} - Estado: ${server.estado}`;
-        if (server.esLider) li.classList.add('leader');
-        
-        const stopButton = document.createElement('button');
-        stopButton.textContent = 'Detener';
-        stopButton.addEventListener('click', () => {
+  const serversList = document.getElementById('servers');
+  serversList.innerHTML = ''; // Limpia la lista actual
+
+  servers.forEach(server => {
+    const li = document.createElement('li');
+    li.classList.add('server-entry');
+
+    // Información del servidor
+    li.textContent = `ID: ${server.id} - Estado: ${server.estado}`;
+    if (server.esLider) li.classList.add('leader');
+
+    // Botón para controlar el estado del servidor
+    const controlButton = document.createElement('button');
+    controlButton.textContent = server.estado === 'activo' ? 'Detener' : 'Levantar';
+
+    // Asignar la función correcta al botón según el estado del servidor
+    const updateButton = () => {
+      if (server.estado === 'activo') {
+        controlButton.textContent = 'Detener';
+        controlButton.onclick = () => {
           fetch('/stop', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ id: server.id })
           })
           .then(response => response.ok ? response.json() : Promise.reject('Error al detener el servidor'))
-          .then(data => console.log('Servidor detenido:', data))
+          .then(data => {
+            console.log('Servidor detenido:', data);
+            socket.emit('requestUpdate'); // Solicita actualización a los nodos
+          })
           .catch(console.error);
-        });
+        };
+      } else {
+        controlButton.textContent = 'Levantar';
+        controlButton.onclick = () => {
+          fetch('/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: server.id })
+          })
+          .then(response => response.ok ? response.json() : Promise.reject('Error al levantar el servidor'))
+          .then(data => {
+            console.log('Servidor levantado:', data);
+            socket.emit('requestUpdate'); // Solicita actualización a los nodos
+          })
+          .catch(console.error);
+        };
+      }
+    };
 
-        li.appendChild(stopButton);
-        serversList.appendChild(li);
-      });
-    });
+    // Inicializa el botón y actualiza al renderizar
+    updateButton();
+    li.appendChild(controlButton);
+    serversList.appendChild(li);
+  });
+});
+
 
     // Agrega nuevos logs
     socket.on('newLog', (log) => {

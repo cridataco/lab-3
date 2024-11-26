@@ -110,6 +110,31 @@ async function iniciarEleccion() {
     enProcesoDeEleccion = false;
 }
 
+app.post('/eleccion', async (req, res) => {
+    const { id } = req.body;
+
+    if (!id) {
+        logMessage('Solicitud de elección inválida: falta el ID del solicitante.');
+        return res.status(400).send('Solicitud inválida');
+    }
+
+    logMessage(`Nodo ${NODE_ID} recibió solicitud de elección del nodo ${id}.`);
+
+    if (Number.parseInt(id) < Number.parseInt(NODE_ID)) {
+        logMessage(`Nodo ${NODE_ID} responde a la elección del nodo ${id}, tiene un ID mayor.`);
+        res.status(200).send('OK');
+
+        // Inicia una nueva elección si no está en proceso
+        if (!enProcesoDeEleccion) {
+            await iniciarEleccion();
+        }
+    } else {
+        logMessage(`Nodo ${NODE_ID} ignora la solicitud de elección del nodo ${id}, ya que su ID es menor o igual.`);
+        res.status(200).send('OK');
+    }
+});
+
+
 async function declararseLider() {
     liderId = NODE_ID;
     esLider = true;
