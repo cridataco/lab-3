@@ -14,8 +14,8 @@ let node = 0;
 const conn = new Client();
 app.use(express.json());
 app.use(cors());
-const MONITOR_IP = '192.168.1.14';
-const NODE_IP = '192.168.1.17';
+const MONITOR_IP = '192.168.1.12';
+const NODE_IP = '192.168.1.15';
 
 let nodos = [];
 let liderId = null;

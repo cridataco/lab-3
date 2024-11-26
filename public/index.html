@@ -11,18 +11,27 @@
       background-color: #f4f4f4;
       margin: 0;
       padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden; /* Evita scroll global */
     }
     .container {
+      width: 90%;
       max-width: 800px;
-      margin: 20px auto;
+      height: 90%;
       background: white;
       padding: 20px;
       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
       border-radius: 8px;
+      display: flex;
+      flex-direction: column;
     }
     h1 {
       font-size: 24px;
       text-align: center;
+      margin: 0 0 20px;
     }
     .info {
       margin-bottom: 20px;
@@ -31,17 +40,22 @@
       margin-bottom: 10px;
     }
     .logs {
-      max-height: 300px;
+      flex: 1; /* Para que ocupe todo el espacio restante */
       overflow-y: auto;
       border: 1px solid #ddd;
       padding: 10px;
       background: #fafafa;
       border-radius: 5px;
     }
-    .logs p {
+    .logs ul {
+      list-style: none;
       margin: 0;
+      padding: 0;
+    }
+    .logs li {
       font-size: 14px;
       color: #333;
+      margin-bottom: 5px;
     }
   </style>
 </head>
@@ -50,46 +64,42 @@
     <h1>Información del Nodo</h1>
     <div class="info">
       <div><strong>Puerto:</strong> <span id="port">Cargando...</span></div>
-      <!-- <div><strong>ID:</strong> <span id="id">Cargando...</span></div> -->
       <div><strong>Estado:</strong> <span id="status">Cargando...</span></div>
     </div>
     
-    <div id="log-list">
+    <div class="logs">
       <h2>Logs</h2>
       <ul id="logs"></ul>
     </div>
   </div>
 
-  <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io(); // Conexión al servidor
     const logsContainer = document.getElementById('logs');
     const portElement = document.getElementById('port');
-    const idElement = document.getElementById('id');
     const statusElement = document.getElementById('status');
 
     const NODE_PORT = window.location.port; 
-    // const NODE_ID = new URLSearchParams(window.location.search).get('id') || 'Desconocido';
 
     portElement.textContent = NODE_PORT;
-    // idElement.textContent = NODE_ID;
     statusElement.textContent = 'Activo';
 
     socket.on('otherLog', (log) => {
       const logsList = document.getElementById('logs');
       const li = document.createElement('li');
-      li.classList.add('log-entry');
       li.textContent = log;
       logsList.appendChild(li);
 
       if (logsList.childElementCount > 50) {
         logsList.removeChild(logsList.firstChild);
       }
+
+      logsList.scrollTop = logsList.scrollHeight; // Hace scroll automáticamente al final
     });
 
     socket.on('connect', () => {
-    socket.emit('getLogs');
-  })
+      socket.emit('getLogs');
+    });
   </script>
 </body>
 </html>
